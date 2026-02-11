@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Through Your Eyes — Observation Exercise</title>
+
+<style>
+:root{
+  --bg:#071018;
+  --panel:#0f1518;
+  --card:#121619;
+  --muted:#A7B1BC;
+  --text:#E6EEF6;
+  --accent:#39D1FF;
+  --accent-2:#FFB86B;
+  --radius:14px;
+  --shadow:0 12px 40px rgba(0,0,0,0.6);
+  --max-width:1100px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+  background-image:linear-gradient(rgba(7,16,24,0.42), rgba(5,10,15,0.56)), url("assets/bg.png");
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed;
+  color:var(--text);
+  padding:24px;
+  min-height:100vh;
+}
+.wrap{max-width:var(--max-width);margin:auto}
+h1{margin:0 0 6px;font-size:28px}
+.lead{color:var(--muted);margin-bottom:18px}
+.wrap > h1,
+.wrap > .lead{
+  display:none;
+}
+.panel{
+  background:rgba(0,0,0,0.55);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:18px;
+  padding:28px 22px 22px;
+  box-shadow:var(--shadow);
+}
+button{
+  cursor:pointer;
+  border:none;
+  border-radius:12px;
+  padding:12px 18px;
+  font-weight:700;
+}
+.btn-primary{
+  background:linear-gradient(180deg,var(--accent),#1BC6F9);
+  color:#052026;
+}
+.btn-secondary{
+  background:#2b2f35;
+  color:var(--text);
+}
+input,textarea{
+  background:var(--card);
+  color:var(--text);
+  border:1px solid rgba(255,255,255,0.04);
+  border-radius:10px;
+  padding:12px;
+  font-size:15px;
+}
+label{font-size:13px;color:var(--muted);display:block;margin-top:16px;margin-bottom:8px}
+textarea{resize:vertical}
+.form-group{
+  display:flex;
+  flex-direction:column;
+}
+.form-group:first-child label{
+  margin-top:0;
+}
+input,textarea{
+  width:100%;
+}
+.button-group{
+  display:flex;
+  gap:12px;
+  margin-top:20px;
+}
+.button-group button{
+  flex:1;
+}
+.hidden{display:none}
+.modal{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.7);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal.active{display:flex}
+.modal-content{
+  background:var(--panel);
+  border-radius:18px;
+  padding:32px;
+  max-width:800px;
+  width:90%;
+  max-height:90vh;
+  overflow-y:auto;
+  box-shadow:var(--shadow);
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+.modal-header h2{
+  margin:0;
+  color:var(--text);
+}
+.modal-close{
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-size:24px;
+  cursor:pointer;
+  padding:0;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.modal-close:hover{color:var(--text)}
+.help-btn-inline{
+  background:var(--accent-2);
+  color:#000;
+  width:100%;
+  margin-top:10px;
+}
+#startScreen > .help-btn{
+  display:none;
+}
+.demo-image{
+  width:100%;
+  border-radius:12px;
+  margin:20px 0;
+}
+.grid-start{
+  display:grid;
+  grid-template-columns:1.2fr 0.8fr;
+  gap:24px;
+}
+@media(max-width:900px){
+  .grid-start{grid-template-columns:1fr}
+}
+.info-block h3{
+  color:var(--accent);
+  margin-bottom:6px;
+}
+.info-block ul{
+  margin:0 0 14px 18px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.note{font-size:13px;color:var(--muted)}
+.timer{font-weight:700}
+.scene-img{
+  width:100%;
+  height:60vh;
+  max-height:640px;
+  object-fit:cover;
+  border-radius:12px;
+  background:#000;
+}
+.progress-bg{
+  height:8px;
+  background:rgba(255,255,255,0.05);
+  border-radius:999px;
+  overflow:hidden;
+}
+.progress-bar{
+  height:8px;
+  width:0%;
+  background:linear-gradient(90deg,var(--accent-2),#FFDAA8);
+}
+#startScreen{
+  background:#000;
+  border-radius:16px;
+  padding:24px;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Through Your Eyes</h1>
+  <p class="lead">Observation exercise · 20 scenes · 60 seconds each</p>
+
+  <!-- HELP MODAL -->
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="document.getElementById('helpModal').classList.remove('active')">✕</button>
+      <video src="assets/scenes/demo.mp4" class="demo-image" autoplay loop muted playsinline>
+        Your browser does not support the video tag.
+      </video>
+      <h3>Sample descriptions</h3>
+      <ul class="note" style="line-height:1.6; margin:0 0 0 18px;">
+        <li>Person places hand on the dog's head and pets it beside a kitchen counter.</li>
+        <li>Human hand makes contact with dog's head while holding a metal bowl nearby.</li>
+        <li>Person strokes the dog's head during food preparation activity.</li>
+        <li>Dog receives physical interaction (petting) from an individual near a countertop.</li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="panel">
+    <h1>Through Your Eyes</h1>
+    <p class="lead">Observation exercise · 20 scenes · 60 seconds each</p>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <button class="help-btn" data-open-hint>💡 Hint</button>
+
+      <div class="grid-start">
+
+        <!-- GUIDELINES + SCORING -->
+        <section>
+          <div class="info-block">
+            <h3>What is expected</h3>
+            <ul>
+              <li>Describe only what is clearly visible in the short video.</li>
+              <li>Do not infer intent, emotions, or background story.</li>
+              <li>Focus on objects, actions, positions, and visible details.</li>
+              <li>Each scene lasts <strong>60 seconds</strong>.</li>
+              <li>Keep responses to 1-2 factual lines (max 400 characters).</li>
+            </ul>
+          </div>
+
+          <div class="info-block">
+            <h3>How scoring works</h3>
+            <ul>
+              <li>Responses are evaluated using automated checks and trainer review.</li>
+              <li>Scoring focuses on accuracy, relevance, and clarity.</li>
+              <li>There are no trick questions.</li>
+              <li>Creativity is not required.</li>
+              <li>Partial but accurate observations are acceptable.</li>
+            </ul>
+          </div>
+
+          <p class="note">
+            This exercise measures observation skills, not writing style.
+          </p>
+        </section>
+
+        <!-- USER FORM -->
+        <section>
+          <div class="form-group">
+            <label>Full name</label>
+            <input id="fullName" type="text" placeholder="Your full name">
+          </div>
+
+          <div class="form-group">
+            <label>Employee ID</label>
+            <input id="employeeId" type="text" placeholder="e.g. 12345">
+          </div>
+
+          <div class="form-group">
+            <label>Email address</label>
+            <input id="email" type="email" placeholder="you@company.com">
+          </div>
+
+          <div class="button-group">
+            <button id="startBtn" class="btn-primary">Start observation</button>
+          </div>
+          <button class="help-btn-inline" data-open-hint>Hint</button>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="hidden">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div>Scene <span id="sceneNum">1</span> / 20</div>
+        <div id="timer" class="timer">60</div>
+      </div>
+
+      <video id="sceneImage" class="scene-img" autoplay loop muted playsinline>
+        Your browser does not support the video tag.
+      </video>
+
+      <label style="margin-top:12px;display:block">What is happening in this scene?</label>
+      <textarea id="response" maxlength="400" placeholder="One or two factual lines (max 400 characters)"></textarea>
+
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <div id="charCount" class="note">0 / 400</div>
+      </div>
+
+      <div class="progress-bg" style="margin-top:10px">
+        <div id="progress" class="progress-bar"></div>
+      </div>
+
+      <div class="button-group">
+        <button id="nextBtn" class="btn-primary">Next</button>
+      </div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden" style="text-align:center">
+      <h2>Session complete</h2>
+      <p class="note">Download your responses and share with your trainer.</p>
+      <button id="downloadBtn" class="btn-primary">Download CSV</button>
+      <button id="restartBtn" class="btn-secondary">Restart</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+(() => {
+  const TOTAL = 20;
+  const TIME_LIMIT = 60;
+  const ATTEMPTED_IDS_KEY = "throughYourEyes_attemptedEmployeeIds";
+
+  const IMAGES = Array.from({length: TOTAL}, (_,i)=>
+    `assets/scenes/${i+1}.mp4`
+  );
+
+  let index = 0;
+  let timeLeft = TIME_LIMIT;
+  let timerId;
+  let responses = [];
+  let meta = {};
+  let startArmed = false;
+
+  const helpModal = document.getElementById("helpModal");
+  const startScreen = document.getElementById("startScreen");
+  const gameScreen = document.getElementById("gameScreen");
+  const endScreen = document.getElementById("endScreen");
+  const sceneNum = document.getElementById("sceneNum");
+  const timerEl = document.getElementById("timer");
+  const sceneImage = document.getElementById("sceneImage");
+  const responseEl = document.getElementById("response");
+  const charCount = document.getElementById("charCount");
+  const progress = document.getElementById("progress");
+  const fullNameInput = document.getElementById("fullName");
+  const employeeIdInput = document.getElementById("employeeId");
+  const emailInput = document.getElementById("email");
+
+  function openHintModal(){
+    helpModal.classList.add("active");
+  }
+
+  function getAttemptedIds(){
+    try{
+      const raw = localStorage.getItem(ATTEMPTED_IDS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    }catch{
+      return [];
+    }
+  }
+
+  function hasAlreadyAttempted(employeeId){
+    const key = employeeId.trim().toLowerCase();
+    return getAttemptedIds().includes(key);
+  }
+
+  function markAttempted(employeeId){
+    const key = employeeId.trim().toLowerCase();
+    const attempted = getAttemptedIds();
+    if(!attempted.includes(key)){
+      attempted.push(key);
+      localStorage.setItem(ATTEMPTED_IDS_KEY, JSON.stringify(attempted));
+    }
+  }
+
+  document.querySelectorAll("[data-open-hint]").forEach(btn => {
+    btn.addEventListener("click", openHintModal);
+  });
+
+  responseEl.addEventListener("input", ()=>{
+    charCount.textContent = `${responseEl.value.length} / 400`;
+  });
+
+  function loadScene(i){
+    index = i;
+    sceneNum.textContent = i + 1;
+    sceneImage.src = IMAGES[i] + '?' + Math.random();
+    sceneImage.load();
+    sceneImage.play().catch(() => {});
+    responseEl.value = "";
+    charCount.textContent = "0 / 400";
+    progress.style.width = `${(i / TOTAL) * 100}%`;
+    startTimer();
+  }
+
+  function startTimer(){
+    clearInterval(timerId);
+    timeLeft = TIME_LIMIT;
+    timerEl.textContent = timeLeft;
+    timerId = setInterval(()=>{
+      timeLeft--;
+      timerEl.textContent = timeLeft;
+      if(timeLeft <= 0){
+        clearInterval(timerId);
+      }
+    },1000);
+  }
+
+  function saveResponse(){
+    responses.push({
+      ...meta,
+      scene: index + 1,
+      response: responseEl.value.trim(),
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  function endSession(){
+    gameScreen.classList.add("hidden");
+    endScreen.classList.remove("hidden");
+    progress.style.width = "100%";
+  }
+
+  document.getElementById("startBtn").onclick = () => {
+    const enteredEmployeeId = employeeIdInput.value.trim();
+
+    if(!enteredEmployeeId){
+      alert("Please enter your Employee ID.");
+      return;
+    }
+    if(hasAlreadyAttempted(enteredEmployeeId)){
+      alert("You have already attempted");
+      return;
+    }
+    if(!startArmed){
+      openHintModal();
+      startArmed = true;
+      return;
+    }
+
+    meta = {
+      name: fullNameInput.value,
+      employeeId: enteredEmployeeId,
+      email: emailInput.value
+    };
+    markAttempted(enteredEmployeeId);
+    startScreen.classList.add("hidden");
+    gameScreen.classList.remove("hidden");
+    loadScene(0);
+  };
+
+  document.getElementById("nextBtn").onclick = () => {
+    clearInterval(timerId);
+    saveResponse();
+    index + 1 === TOTAL ? endSession() : loadScene(index + 1);
+  };
+
+  document.getElementById("downloadBtn").onclick = () => {
+    const headers = Object.keys(responses[0]).join(",");
+    const rows = responses.map(r =>
+      Object.values(r).map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
+    );
+    const csv = [headers, ...rows].join("\n");
+    const blob = new Blob([csv], {type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${meta.employeeId}_${meta.name}.csv`;
+    a.click();
+  };
+
+  document.getElementById("restartBtn").onclick = () => location.reload();
+})();
+</script>
+</body>
+</html>
