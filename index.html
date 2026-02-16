@@ -234,8 +234,8 @@ input,textarea{
             <h3>What is expected</h3>
             <ul>
               <li>Describe only what is clearly visible in the short video.</li>
-              <li>Do not infer intent, emotions, or background story.</li>
-              <li>Focus on objects, actions, positions, and visible details.</li>
+              <li><strong>Do not infer intent, emotions, or background story.</strong></li>
+              <li><strong>Focus on objects, actions, positions, and visible details.</strong></li>
               <li>Each scene lasts <strong>60 seconds</strong>.</li>
               <li>Keep responses to 1-2 factual lines (max 400 characters).</li>
             </ul>
@@ -244,7 +244,6 @@ input,textarea{
           <div class="info-block">
             <h3>How scoring works</h3>
             <ul>
-              <li>Responses are evaluated using automated checks and trainer review.</li>
               <li>Scoring focuses on accuracy, relevance, and clarity.</li>
               <li>There are no trick questions.</li>
               <li>Creativity is not required.</li>
@@ -262,11 +261,6 @@ input,textarea{
           <div class="form-group">
             <label>Full name</label>
             <input id="fullName" type="text" placeholder="Your full name">
-          </div>
-
-          <div class="form-group">
-            <label>Employee ID</label>
-            <input id="employeeId" type="text" placeholder="e.g. 12345">
           </div>
 
           <div class="form-group">
@@ -325,7 +319,7 @@ input,textarea{
 (() => {
   const TOTAL = 20;
   const TIME_LIMIT = 60;
-  const ATTEMPTED_IDS_KEY = "throughYourEyes_attemptedEmployeeIds";
+  const ATTEMPTED_EMAILS_KEY = "throughYourEyes_attemptedEmails";
 
   const IMAGES = Array.from({length: TOTAL}, (_,i)=>
     `assets/scenes/${i+1}.mp4`
@@ -349,7 +343,6 @@ input,textarea{
   const charCount = document.getElementById("charCount");
   const progress = document.getElementById("progress");
   const fullNameInput = document.getElementById("fullName");
-  const employeeIdInput = document.getElementById("employeeId");
   const emailInput = document.getElementById("email");
 
   function openHintModal(){
@@ -358,7 +351,7 @@ input,textarea{
 
   function getAttemptedIds(){
     try{
-      const raw = localStorage.getItem(ATTEMPTED_IDS_KEY);
+      const raw = localStorage.getItem(ATTEMPTED_EMAILS_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed : [];
     }catch{
@@ -366,17 +359,17 @@ input,textarea{
     }
   }
 
-  function hasAlreadyAttempted(employeeId){
-    const key = employeeId.trim().toLowerCase();
+  function hasAlreadyAttempted(email){
+    const key = email.trim().toLowerCase();
     return getAttemptedIds().includes(key);
   }
 
-  function markAttempted(employeeId){
-    const key = employeeId.trim().toLowerCase();
+  function markAttempted(email){
+    const key = email.trim().toLowerCase();
     const attempted = getAttemptedIds();
     if(!attempted.includes(key)){
       attempted.push(key);
-      localStorage.setItem(ATTEMPTED_IDS_KEY, JSON.stringify(attempted));
+      localStorage.setItem(ATTEMPTED_EMAILS_KEY, JSON.stringify(attempted));
     }
   }
 
@@ -429,13 +422,13 @@ input,textarea{
   }
 
   document.getElementById("startBtn").onclick = () => {
-    const enteredEmployeeId = employeeIdInput.value.trim();
+    const enteredEmail = emailInput.value.trim();
 
-    if(!enteredEmployeeId){
-      alert("Please enter your Employee ID.");
+    if(!enteredEmail){
+      alert("Please enter your email address.");
       return;
     }
-    if(hasAlreadyAttempted(enteredEmployeeId)){
+    if(hasAlreadyAttempted(enteredEmail)){
       alert("You have already attempted");
       return;
     }
@@ -447,10 +440,9 @@ input,textarea{
 
     meta = {
       name: fullNameInput.value,
-      employeeId: enteredEmployeeId,
-      email: emailInput.value
+      email: enteredEmail
     };
-    markAttempted(enteredEmployeeId);
+    markAttempted(enteredEmail);
     startScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
     loadScene(0);
@@ -471,7 +463,9 @@ input,textarea{
     const blob = new Blob([csv], {type:"text/csv"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${meta.employeeId}_${meta.name}.csv`;
+    const emailToken = (meta.email || "responses").replace(/[^a-z0-9._-]+/gi, "_");
+    const nameToken = (meta.name || "user").replace(/[^a-z0-9._-]+/gi, "_");
+    a.download = `${emailToken}_${nameToken}.csv`;
     a.click();
   };
 
