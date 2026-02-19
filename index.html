@@ -244,6 +244,7 @@ input,textarea{
           <div class="info-block">
             <h3>How scoring works</h3>
             <ul>
+              <li>Responses are evaluated using automated checks and trainer review.</li>
               <li>Scoring focuses on accuracy, relevance, and clarity.</li>
               <li>There are no trick questions.</li>
               <li>Creativity is not required.</li>
@@ -307,8 +308,8 @@ input,textarea{
     <!-- END SCREEN -->
     <div id="endScreen" class="hidden" style="text-align:center">
       <h2>Session complete</h2>
-      <p class="note">Download your responses and share with your trainer.</p>
-      <button id="downloadBtn" class="btn-primary">Download CSV</button>
+      <p class="note">Your responses will be sent automatically.</p>
+      <div id="submitStatus" class="note" style="margin:12px 0"></div>
       <button id="restartBtn" class="btn-secondary">Restart</button>
     </div>
 
@@ -320,6 +321,7 @@ input,textarea{
   const TOTAL = 20;
   const TIME_LIMIT = 60;
   const ATTEMPTED_EMAILS_KEY = "throughYourEyes_attemptedEmails";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr1_Jzi3Yp6TyqFOYOMs89P_yy1zzFcuIWiVvw5OXqWJ06J7NPjctPAGbNvASTiaUF/exec";
 
   const IMAGES = Array.from({length: TOTAL}, (_,i)=>
     `assets/scenes/${i+1}.mp4`
@@ -331,6 +333,7 @@ input,textarea{
   let responses = [];
   let meta = {};
   let startArmed = false;
+  let submitted = false;
 
   const helpModal = document.getElementById("helpModal");
   const startScreen = document.getElementById("startScreen");
@@ -344,6 +347,7 @@ input,textarea{
   const progress = document.getElementById("progress");
   const fullNameInput = document.getElementById("fullName");
   const emailInput = document.getElementById("email");
+  const submitStatus = document.getElementById("submitStatus");
 
   function openHintModal(){
     helpModal.classList.add("active");
@@ -388,6 +392,7 @@ input,textarea{
     sceneImage.load();
     sceneImage.play().catch(() => {});
     responseEl.value = "";
+    responseEl.disabled = false;
     charCount.textContent = "0 / 400";
     progress.style.width = `${(i / TOTAL) * 100}%`;
     startTimer();
@@ -402,6 +407,8 @@ input,textarea{
       timerEl.textContent = timeLeft;
       if(timeLeft <= 0){
         clearInterval(timerId);
+        responseEl.disabled = true;
+        charCount.textContent = "Time is up";
       }
     },1000);
   }
@@ -419,6 +426,7 @@ input,textarea{
     gameScreen.classList.add("hidden");
     endScreen.classList.remove("hidden");
     progress.style.width = "100%";
+    sendToSheets();
   }
 
   document.getElementById("startBtn").onclick = () => {
@@ -454,20 +462,55 @@ input,textarea{
     index + 1 === TOTAL ? endSession() : loadScene(index + 1);
   };
 
-  document.getElementById("downloadBtn").onclick = () => {
-    const headers = Object.keys(responses[0]).join(",");
-    const rows = responses.map(r =>
-      Object.values(r).map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
-    );
-    const csv = [headers, ...rows].join("\n");
-    const blob = new Blob([csv], {type:"text/csv"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    const emailToken = (meta.email || "responses").replace(/[^a-z0-9._-]+/gi, "_");
-    const nameToken = (meta.name || "user").replace(/[^a-z0-9._-]+/gi, "_");
-    a.download = `${emailToken}_${nameToken}.csv`;
-    a.click();
-  };
+
+  async function sendToSheets() {
+    if (!responses.length || submitted) return;
+
+    // 1. Update this with your actual URL from Step 2
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr1_Jzi3Yp6TyqFOYOMs89P_yy1zzFcuIWiVvw5OXqWJ06J7NPjctPAGbNvASTiaUF/exec"; 
+
+    submitStatus.className = "note";
+    submitStatus.textContent = "Uploading to Database...";
+
+    // 2. Build the payload matching the IDE instructions
+    const payload = {
+      meta: {
+        timestamp: new Date().toISOString(),
+        email: meta.email,
+        name: meta.name
+      },
+      responses: []
+    };
+
+    // 3. Flatten all annotations from all videos into a single list
+    responses.forEach((r) => {
+      payload.responses.push({
+        scene: r.scene,
+        response: r.response
+      });
+    });
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", // Required for cross-domain Google Script posts
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      // Note: With 'no-cors', we won't see the success JSON, 
+      // but the data will appear in your sheet.
+      submitted = true;
+      submitStatus.className = "note ok";
+      submitStatus.textContent = "Data successfully sent to Google Sheets!";
+      
+    } catch (err) {
+      submitted = false;
+      submitStatus.className = "note error";
+      submitStatus.textContent = "Upload failed. Please check your connection.";
+      console.error(err);
+    }
+  }
 
   document.getElementById("restartBtn").onclick = () => location.reload();
 })();
