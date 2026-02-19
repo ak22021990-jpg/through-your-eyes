@@ -193,6 +193,20 @@ input,textarea{
   border-radius:16px;
   padding:24px;
 }
+.spinner{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:4px solid rgba(255,255,255,0.15);
+  border-top-color:var(--accent);
+  animation:spin 1s linear infinite;
+  margin:0 auto 14px;
+}
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+.note.ok{color:#8be499;}
+.note.error{color:#ff9b8b;}
 </style>
 </head>
 
@@ -310,10 +324,20 @@ input,textarea{
       <h2>Session complete</h2>
       <p class="note">Your responses will be sent automatically.</p>
       <div id="submitStatus" class="note" style="margin:12px 0"></div>
-      <button id="restartBtn" class="btn-secondary">Restart</button>
+      <button id="downloadCsvBtn" class="btn-secondary">Download CSV (with hash)</button>
+      <div id="hashDisplay" class="note" style="margin:8px 0"></div>
+      <button id="retryUploadBtn" class="btn-primary hidden">Retry upload</button>
+      <button id="restartBtn" class="btn-secondary" style="margin-top:8px">Restart</button>
     </div>
 
   </main>
+</div>
+
+<div id="uploadOverlay" class="modal">
+  <div class="modal-content" style="max-width:420px;text-align:center">
+    <div class="spinner"></div>
+    <p id="uploadOverlayText" class="note">Uploading responses... please keep this tab open.</p>
+  </div>
 </div>
 
 <script>
@@ -321,7 +345,7 @@ input,textarea{
   const TOTAL = 20;
   const TIME_LIMIT = 60;
   const ATTEMPTED_EMAILS_KEY = "throughYourEyes_attemptedEmails";
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr1_Jzi3Yp6TyqFOYOMs89P_yy1zzFcuIWiVvw5OXqWJ06J7NPjctPAGbNvASTiaUF/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8YNd2eLYyWuB8dL1Xg3Q6ABW4ZZ7Ndn2Ds5Zf8lPUpMPde1vvpWldy7102qB4os2j/exec";
 
   const IMAGES = Array.from({length: TOTAL}, (_,i)=>
     `assets/scenes/${i+1}.mp4`
@@ -334,6 +358,8 @@ input,textarea{
   let meta = {};
   let startArmed = false;
   let submitted = false;
+  let uploading = false;
+  let lastHash = "";
 
   const helpModal = document.getElementById("helpModal");
   const startScreen = document.getElementById("startScreen");
@@ -348,6 +374,11 @@ input,textarea{
   const fullNameInput = document.getElementById("fullName");
   const emailInput = document.getElementById("email");
   const submitStatus = document.getElementById("submitStatus");
+  const downloadCsvBtn = document.getElementById("downloadCsvBtn");
+  const hashDisplay = document.getElementById("hashDisplay");
+  const retryUploadBtn = document.getElementById("retryUploadBtn");
+  const uploadOverlay = document.getElementById("uploadOverlay");
+  const uploadOverlayText = document.getElementById("uploadOverlayText");
 
   function openHintModal(){
     helpModal.classList.add("active");
@@ -396,6 +427,9 @@ input,textarea{
     charCount.textContent = "0 / 400";
     progress.style.width = `${(i / TOTAL) * 100}%`;
     startTimer();
+    if(i === TOTAL - 1){
+      setTimeout(()=>alert("Final scene: after you click Next, please keep this tab open until you see the upload complete message."), 150);
+    }
   }
 
   function startTimer(){
@@ -426,6 +460,8 @@ input,textarea{
     gameScreen.classList.add("hidden");
     endScreen.classList.remove("hidden");
     progress.style.width = "100%";
+    hashDisplay.textContent = "";
+    lastHash = "";
     sendToSheets();
   }
 
@@ -448,7 +484,8 @@ input,textarea{
 
     meta = {
       name: fullNameInput.value,
-      email: enteredEmail
+      email: enteredEmail,
+      startTime: new Date().toISOString()
     };
     markAttempted(enteredEmail);
     startScreen.classList.add("hidden");
@@ -462,53 +499,105 @@ input,textarea{
     index + 1 === TOTAL ? endSession() : loadScene(index + 1);
   };
 
+  downloadCsvBtn.onclick = async () => {
+    if(!responses.length) return;
+    const {csv, hash} = await generateCsvWithHash();
+    lastHash = hash;
+    hashDisplay.textContent = `SHA-256: ${hash}`;
+    const blob = new Blob([csv], {type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const emailToken = (meta.email || "responses").replace(/[^a-z0-9._-]+/gi, "_");
+    const nameToken = (meta.name || "user").replace(/[^a-z0-9._-]+/gi, "_");
+    a.download = `${emailToken}_${nameToken}.csv`;
+    a.click();
+  };
+
+  retryUploadBtn.onclick = () => {
+    sendToSheets();
+  };
+
+
+  function setUploadOverlay(active, text){
+    uploadOverlay.classList.toggle("active", !!active);
+    if(text) uploadOverlayText.textContent = text;
+  }
+
+  function setUnloadGuard(on){
+    if(on){
+      window.onbeforeunload = (e) => {
+        e.returnValue = "Responses are uploading. Please stay on this page.";
+        return e.returnValue;
+      };
+    }else{
+      window.onbeforeunload = null;
+    }
+  }
+
+  async function generateCsvWithHash(){
+    const headers = ["timestamp","email","name","scene","response"];
+    const rows = responses.map(r => {
+      const vals = [r.timestamp, meta.email, meta.name, r.scene, r.response];
+      return vals.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",");
+    });
+    const csvCore = [headers.join(","), ...rows].join("\n");
+    const encoder = new TextEncoder();
+    const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(csvCore));
+    const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    const finalCsv = `${csvCore}\n# sha256:${hashHex}`;
+    return {csv: finalCsv, hash: hashHex};
+  }
 
   async function sendToSheets() {
     if (!responses.length || submitted) return;
 
-    // 1. Update this with your actual URL from Step 2
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr1_Jzi3Yp6TyqFOYOMs89P_yy1zzFcuIWiVvw5OXqWJ06J7NPjctPAGbNvASTiaUF/exec"; 
-
+    uploading = true;
+    setUnloadGuard(true);
+    setUploadOverlay(true, "Uploading responses... please keep this tab open.");
     submitStatus.className = "note";
     submitStatus.textContent = "Uploading to Database...";
+    retryUploadBtn.classList.add("hidden");
 
-    // 2. Build the payload matching the IDE instructions
     const payload = {
       meta: {
         timestamp: new Date().toISOString(),
         email: meta.email,
         name: meta.name
       },
-      responses: []
-    };
-
-    // 3. Flatten all annotations from all videos into a single list
-    responses.forEach((r) => {
-      payload.responses.push({
+      responses: responses.map(r => ({
         scene: r.scene,
-        response: r.response
-      });
-    });
+        response: r.response,
+        timestamp: r.timestamp
+      }))
+    };
 
     try {
       await fetch(SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors", // Required for cross-domain Google Script posts
+        mode: "no-cors", // avoids preflight that Apps Script cannot handle
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      // Note: With 'no-cors', we won't see the success JSON, 
-      // but the data will appear in your sheet.
       submitted = true;
       submitStatus.className = "note ok";
       submitStatus.textContent = "Data successfully sent to Google Sheets!";
-      
+      setUploadOverlay(false);
+      setUnloadGuard(false);
+
+      const {hash} = await generateCsvWithHash();
+      lastHash = hash;
+      hashDisplay.textContent = `SHA-256: ${hash}`;
     } catch (err) {
       submitted = false;
       submitStatus.className = "note error";
-      submitStatus.textContent = "Upload failed. Please check your connection.";
+      submitStatus.textContent = `Upload failed. ${err.message || "Please check your connection."}`;
+      setUploadOverlay(false);
+      retryUploadBtn.classList.remove("hidden");
+      setUnloadGuard(false);
       console.error(err);
+    } finally {
+      uploading = false;
     }
   }
 
