@@ -213,7 +213,7 @@ input,textarea{
 <body>
 <div class="wrap">
   <h1>Through Your Eyes</h1>
-  <p class="lead">Observation exercise · 20 scenes · 60 seconds each</p>
+  <p class="lead">Observation exercise · 10 scenes · 60 seconds each</p>
 
   <!-- HELP MODAL -->
   <div id="helpModal" class="modal">
@@ -224,19 +224,17 @@ input,textarea{
       </video>
       <h3>Sample descriptions</h3>
       <ul class="note" style="line-height:1.6; margin:0 0 0 18px;">
-        <li><strong>Person places hand on the dog's head and pets it beside a kitchen counter.</strong></li>
-        <li>Sample 1: Person places hand on the dog's head and pets it beside a kitchen counter.</li>
-        <li>Sample 2:Human hand makes contact with dog's head while holding a metal bowl nearby.</li>
-        <li>Sample 3:Person strokes the dog's head during food preparation activity.</li>
-        <li>Sample 4:Dog receives physical interaction (petting) from an individual near a countertop.</li>
-        <li>The above samples are for reference, we require one description based on each video</li>
+        <li>Person places hand on the dog's head and pets it beside a kitchen counter.</li>
+        <li>Human hand makes contact with dog's head while holding a metal bowl nearby.</li>
+        <li>Person strokes the dog's head during food preparation activity.</li>
+        <li>Dog receives physical interaction (petting) from an individual near a countertop.</li>
       </ul>
     </div>
   </div>
 
   <main class="panel">
     <h1>Through Your Eyes</h1>
-    <p class="lead">Observation exercise · 20 scenes · 60 seconds each</p>
+    <p class="lead">Observation exercise · 10 scenes · 60 seconds each</p>
 
     <!-- START SCREEN -->
     <div id="startScreen">
@@ -297,7 +295,7 @@ input,textarea{
     <!-- GAME SCREEN -->
     <div id="gameScreen" class="hidden">
       <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-        <div>Scene <span id="sceneNum">1</span> / 20</div>
+        <div>Scene <span id="sceneNum">1</span> / 10</div>
         <div id="timer" class="timer">60</div>
       </div>
 
@@ -344,7 +342,7 @@ input,textarea{
 
 <script>
 (() => {
-  const TOTAL = 20;
+  const TOTAL = 10;
   const TIME_LIMIT = 60;
   const ATTEMPTED_EMAILS_KEY = "throughYourEyes_attemptedEmails";
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8YNd2eLYyWuB8dL1Xg3Q6ABW4ZZ7Ndn2Ds5Zf8lPUpMPde1vvpWldy7102qB4os2j/exec";
@@ -384,6 +382,10 @@ input,textarea{
 
   function openHintModal(){
     helpModal.classList.add("active");
+  }
+
+  function isValidEmail(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
   function getAttemptedIds(){
@@ -474,6 +476,10 @@ input,textarea{
       alert("Please enter your email address.");
       return;
     }
+    if(!isValidEmail(enteredEmail)){
+      alert("Please enter a valid email address.");
+      return;
+    }
     if(hasAlreadyAttempted(enteredEmail)){
       alert("You have already attempted");
       return;
@@ -493,6 +499,7 @@ input,textarea{
     startScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
     loadScene(0);
+    setUnloadGuard(true);
   };
 
   document.getElementById("nextBtn").onclick = () => {
@@ -528,7 +535,7 @@ input,textarea{
   function setUnloadGuard(on){
     if(on){
       window.onbeforeunload = (e) => {
-        e.returnValue = "Responses are uploading. Please stay on this page.";
+        e.returnValue = "Do not close until the upload is complete.";
         return e.returnValue;
       };
     }else{
@@ -596,7 +603,7 @@ input,textarea{
       submitStatus.textContent = `Upload failed. ${err.message || "Please check your connection."}`;
       setUploadOverlay(false);
       retryUploadBtn.classList.remove("hidden");
-      setUnloadGuard(false);
+      // keep unload guard on until a successful upload
       console.error(err);
     } finally {
       uploading = false;
@@ -608,3 +615,4 @@ input,textarea{
 </script>
 </body>
 </html>
+
